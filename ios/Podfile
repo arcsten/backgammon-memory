@@ -57,6 +57,8 @@ target 'BackgammonMemory' do
     :flipper_configuration => flipper_config
   )
 
+  pod 'WildBGEngine', :path => '.'
+
 
   post_install do |installer|
     react_native_post_install(
