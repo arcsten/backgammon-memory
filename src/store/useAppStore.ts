@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorageLib from '@react-native-async-storage/async-storage';
+import { NativeModules } from 'react-native';
 import type { AppSettings, BoardPosition, PositionAnalysis, HistoryItem } from '@/types';
 
 interface AppState {
@@ -38,6 +39,39 @@ const defaultSettings: AppSettings = {
   hapticFeedback: true,
 };
 
+// Safe AsyncStorage wrapper (fallback in dev client if native module missing)
+const MemoryStorage = (() => {
+  const store = new Map<string, string>();
+  return {
+    async getItem(key: string) {
+      return store.has(key) ? (store.get(key) as string) : null;
+    },
+    async setItem(key: string, value: string) {
+      store.set(key, value);
+    },
+    async removeItem(key: string) {
+      store.delete(key);
+    },
+  };
+})();
+
+const isNativeAsyncStorageAvailable = Boolean(
+  (NativeModules as any)?.RNCAsyncStorage &&
+  AsyncStorageLib && typeof (AsyncStorageLib as any).getItem === 'function'
+);
+
+const Storage = isNativeAsyncStorageAvailable
+  ? (AsyncStorageLib as unknown as {
+      getItem: (key: string) => Promise<string | null>;
+      setItem: (key: string, value: string) => Promise<void>;
+      removeItem: (key: string) => Promise<void>;
+    })
+  : (MemoryStorage as unknown as {
+      getItem: (key: string) => Promise<string | null>;
+      setItem: (key: string, value: string) => Promise<void>;
+      removeItem: (key: string) => Promise<void>;
+    });
+
 export const useAppStore = create<AppState>((set, get) => ({
   // Settings
   settings: defaultSettings,
@@ -45,7 +79,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => {
       const updatedSettings = { ...state.settings, ...newSettings };
       // Persist settings immediately
-      AsyncStorage.setItem('app_settings', JSON.stringify(updatedSettings));
+      Storage.setItem('app_settings', JSON.stringify(updatedSettings));
       return { settings: updatedSettings };
     }),
   
@@ -63,17 +97,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       // Keep only last 100 items
       const trimmedHistory = newHistory.slice(0, 100);
       // Persist history
-      AsyncStorage.setItem('position_history', JSON.stringify(trimmedHistory));
+      Storage.setItem('position_history', JSON.stringify(trimmedHistory));
       return { history: trimmedHistory };
     }),
   removeFromHistory: (id) =>
     set((state) => {
       const newHistory = state.history.filter(h => h.id !== id);
-      AsyncStorage.setItem('position_history', JSON.stringify(newHistory));
+      Storage.setItem('position_history', JSON.stringify(newHistory));
       return { history: newHistory };
     }),
   clearHistory: () => {
-    AsyncStorage.removeItem('position_history');
+    Storage.removeItem('position_history');
     set({ history: [] });
   },
   
@@ -87,16 +121,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadPersistedData: async () => {
     try {
       const [settingsData, historyData] = await Promise.all([
-        AsyncStorage.getItem('app_settings'),
-        AsyncStorage.getItem('position_history'),
+        Storage.getItem('app_settings'),
+        Storage.getItem('position_history'),
       ]);
       
       const settings = settingsData 
         ? { ...defaultSettings, ...JSON.parse(settingsData) }
         : defaultSettings;
       
-      const history = historyData ? JSON.parse(historyData) : [];
-      
+      const rawHistory = historyData ? JSON.parse(historyData) : [];
+      const history = Array.isArray(rawHistory)
+        ? rawHistory.map((item) => ({
+            ...item,
+            timestamp: item?.timestamp ? new Date(item.timestamp) : new Date(),
+          }))
+        : [];
+
       set({ settings, history });
     } catch (error) {
       console.error('Failed to load persisted data:', error);
@@ -107,8 +147,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       const { settings, history } = get();
       await Promise.all([
-        AsyncStorage.setItem('app_settings', JSON.stringify(settings)),
-        AsyncStorage.setItem('position_history', JSON.stringify(history)),
+        Storage.setItem('app_settings', JSON.stringify(settings)),
+        Storage.setItem('position_history', JSON.stringify(history)),
       ]);
     } catch (error) {
       console.error('Failed to persist data:', error);

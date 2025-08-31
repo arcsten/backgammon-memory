@@ -1,30 +1,30 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, { Rect, Polygon, Circle, Text as SvgText, G } from 'react-native-svg';
 
-import { colors } from '@/utils/theme';
+import { colors, spacing } from '@/utils/theme';
 import type { BoardPosition } from '@/types';
 
 interface BoardDiagramProps {
   position?: BoardPosition | null;
   style?: any;
-  size?: 'small' | 'medium' | 'large';
+  width?: number;
 }
 
 const BoardDiagram: React.FC<BoardDiagramProps> = ({
   position,
   style,
-  size = 'medium',
+  width: preferredWidth,
 }) => {
-  const dimensions = {
-    small: { width: 200, height: 150 },
-    medium: { width: 300, height: 225 },
-    large: { width: 400, height: 300 },
-  };
-
-  const { width, height } = dimensions[size];
-  const pointWidth = width / 14; // 24 points + 2 for bar
-  const pointHeight = height * 0.4;
+  const { width: screenWidth } = useWindowDimensions();
+  const width = Math.min(preferredWidth || screenWidth - spacing.lg * 2, 560);
+  const height = Math.round(width * 0.62);
+  const gutter = 6; // side and middle gutters
+  const barWidth = 12;
+  const playAreaWidth = width - gutter * 2 - barWidth; // two halves + bar
+  const halfWidth = playAreaWidth / 2;
+  const pointWidth = halfWidth / 6; // 6 points per side half
+  const pointHeight = height * 0.42;
 
   // Mock position data if none provided
   const mockPoints = Array.from({ length: 24 }, (_, i) => ({
@@ -40,8 +40,33 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
   const renderPoint = (pointNumber: number, isTop: boolean) => {
     const point = points.find(p => p.number === pointNumber);
     const pieces = point?.pieces || [];
-    
-    const x = ((pointNumber - 1) % 12) * pointWidth + (pointNumber > 12 ? pointWidth : 0);
+    // Determine half and column within half according to standard layout
+    let baseX = gutter;
+    let column = 0; // 0..5 within a half
+
+    if (isTop) {
+      if (pointNumber >= 19 && pointNumber <= 24) {
+        // Top-left half: left→right = 24..19
+        baseX = gutter;
+        column = 24 - pointNumber; // 24->0 ... 19->5
+      } else {
+        // Top-right half: left→right = 18..13
+        baseX = gutter + halfWidth + barWidth;
+        column = 18 - pointNumber; // 18->0 ... 13->5
+      }
+    } else {
+      if (pointNumber >= 1 && pointNumber <= 6) {
+        // Bottom-left half: left→right = 1..6
+        baseX = gutter;
+        column = pointNumber - 1; // 1->0 ... 6->5
+      } else {
+        // Bottom-right half: left→right = 7..12
+        baseX = gutter + halfWidth + barWidth;
+        column = pointNumber - 7; // 7->0 ... 12->5
+      }
+    }
+
+    const x = baseX + column * pointWidth;
     const y = isTop ? 0 : height - pointHeight;
     
     // Point triangle
@@ -50,7 +75,8 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
       : `${x},${y + pointHeight} ${x + pointWidth},${y + pointHeight} ${x + pointWidth/2},${y}`;
 
     // Point color (alternating dark/light)
-    const pointColor = (pointNumber % 2 === 0) ? colors.boardBrown : '#8B4513';
+    const isDark = (column % 2) === 0;
+    const pointColor = isDark ? '#7B3F00' : '#A05A2C';
 
     return (
       <G key={`point-${pointNumber}`}>
@@ -110,7 +136,7 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
   };
 
   const renderBar = () => {
-    const barX = 6 * pointWidth;
+    const barX = gutter + halfWidth;
     const barWhite = position?.bar?.white || 0;
     const barRed = position?.bar?.red || 0;
 
@@ -120,9 +146,9 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
         <Rect
           x={barX}
           y={0}
-          width={pointWidth}
+          width={barWidth}
           height={height}
-          fill={colors.surface}
+          fill={colors.background}
           stroke={colors.border}
           strokeWidth="1"
         />
@@ -131,7 +157,7 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
         {Array.from({ length: Math.min(barWhite, 8) }, (_, i) => (
           <Circle
             key={`bar-white-${i}`}
-            cx={barX + pointWidth/2}
+            cx={barX + barWidth/2}
             cy={height/2 - 40 + (i * 10)}
             r="6"
             fill={colors.pieceWhite}
@@ -144,7 +170,7 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
         {Array.from({ length: Math.min(barRed, 8) }, (_, i) => (
           <Circle
             key={`bar-red-${i}`}
-            cx={barX + pointWidth/2}
+            cx={barX + barWidth/2}
             cy={height/2 + 40 - (i * 10)}
             r="6"
             fill={colors.pieceRed}
@@ -156,7 +182,7 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
         {/* Bar overflow indicators */}
         {barWhite > 8 && (
           <SvgText
-            x={barX + pointWidth/2}
+            x={barX + barWidth/2}
             y={height/2 - 40 + (7 * 10)}
             fontSize="8"
             fill={colors.text}
@@ -168,7 +194,7 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
         
         {barRed > 8 && (
           <SvgText
-            x={barX + pointWidth/2}
+            x={barX + barWidth/2}
             y={height/2 + 40 - (7 * 10)}
             fontSize="8"
             fill={colors.text}
@@ -188,9 +214,20 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
         <Rect
           width={width}
           height={height}
-          fill={colors.background}
+          fill={colors.surface}
           stroke={colors.border}
           strokeWidth="2"
+        />
+
+        {/* Middle separator */}
+        <Rect
+          x={gutter + halfWidth}
+          y={0}
+          width={barWidth}
+          height={height}
+          fill={colors.surface}
+          stroke={colors.border}
+          strokeWidth="1"
         />
         
         {/* Top points (13-24) */}

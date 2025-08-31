@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, Theme } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import TabNavigator from '@/navigation/TabNavigator';
 import { useAppStore } from '@/store/useAppStore';
@@ -29,10 +30,12 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={styles.container}>
-        <NavigationContainer>
-          <StatusBar style="light" backgroundColor={colors.background} />
-          <TabNavigator />
-        </NavigationContainer>
+        <SafeAreaProvider>
+          <NavigationContainer theme={navigationTheme}>
+            <StatusBar style="light" backgroundColor={colors.background} />
+            <TabNavigator />
+          </NavigationContainer>
+        </SafeAreaProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
   );
@@ -44,4 +47,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 });
+
+const navigationTheme: Theme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: colors.accent,
+    background: colors.background,
+    card: colors.surface,
+    text: colors.text,
+    border: colors.border,
+    notification: colors.accent,
+  },
+};
 

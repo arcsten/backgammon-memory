@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   TextInput,
   TouchableOpacity,
   Alert,
@@ -27,13 +27,16 @@ const HistoryScreen: React.FC = () => {
     const query = searchQuery.toLowerCase();
     return (
       item.id.toLowerCase().includes(query) ||
-      item.analysis?.positionId.toLowerCase().includes(query) ||
-      item.timestamp.toLocaleDateString().includes(query)
+      item.analysis?.positionId?.toLowerCase().includes(query) ||
+      (item.timestamp instanceof Date
+        ? item.timestamp.toLocaleDateString().toLowerCase().includes(query)
+        : new Date(item.timestamp as unknown as string).toLocaleDateString().toLowerCase().includes(query))
     );
   });
 
   const groupedHistory = filteredHistory.reduce((groups, item) => {
-    const date = item.timestamp.toDateString();
+    const ts = item.timestamp instanceof Date ? item.timestamp : new Date(item.timestamp as unknown as string);
+    const date = ts.toDateString();
     if (!groups[date]) {
       groups[date] = [];
     }
@@ -43,7 +46,11 @@ const HistoryScreen: React.FC = () => {
 
   const groupedData = Object.entries(groupedHistory).map(([date, items]) => ({
     date,
-    items: items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()),
+    items: items.sort((a, b) => {
+      const ta = (a.timestamp instanceof Date ? a.timestamp : new Date(a.timestamp as unknown as string)).getTime();
+      const tb = (b.timestamp instanceof Date ? b.timestamp : new Date(b.timestamp as unknown as string)).getTime();
+      return tb - ta;
+    }),
   }));
 
   const handleDeleteSelected = () => {
@@ -180,22 +187,16 @@ const HistoryScreen: React.FC = () => {
       )}
 
       {/* History List */}
-      <FlatList
-        data={groupedData}
-        keyExtractor={(item) => item.date}
-        renderItem={({ item }) => (
-          <View>
-            {renderSectionHeader(item.date)}
-            {item.items.map(historyItem => (
-              <View key={historyItem.id}>
-                {renderItem({ item: historyItem })}
-              </View>
+      <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+        {groupedData.map(section => (
+          <View key={section.date}>
+            {renderSectionHeader(section.date)}
+            {section.items.map(historyItem => (
+              <View key={historyItem.id}>{renderItem({ item: historyItem })}</View>
             ))}
           </View>
-        )}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+        ))}
+      </ScrollView>
 
       {/* Footer Actions */}
       {history.length > 0 && (

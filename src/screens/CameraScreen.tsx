@@ -10,10 +10,12 @@ import {
 } from 'react-native';
 import {
   Camera,
-  useCameraDevices,
+  useCameraDevice,
   useFrameProcessor,
+  useCameraPermission,
 } from 'react-native-vision-camera';
 import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
@@ -33,10 +35,9 @@ const { width, height } = Dimensions.get('window');
 
 const CameraScreen: React.FC = () => {
   const camera = useRef<Camera>(null);
-  const devices = useCameraDevices();
-  const device = devices.back;
+  const device = useCameraDevice('back');
 
-  const [hasPermission, setHasPermission] = useState(false);
+  const { hasPermission, requestPermission } = useCameraPermission();
   const [isActive, setIsActive] = useState(true);
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [boardDetected, setBoardDetected] = useState(false);
@@ -54,11 +55,6 @@ const CameraScreen: React.FC = () => {
   const overlayOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // Request camera permission
-    Camera.requestCameraPermission().then((permission) => {
-      setHasPermission(permission === 'authorized');
-    });
-
     // Start pulse animation
     pulseAnimation.value = withRepeat(
       withTiming(1.1, { duration: 1000 }),
@@ -72,20 +68,10 @@ const CameraScreen: React.FC = () => {
     setFlashEnabled(settings.flashEnabled);
   }, [settings.flashEnabled]);
 
-  const frameProcessor = useFrameProcessor((frame) => {
-    'worklet';
-    
-    // TODO: Implement OpenCV board detection here
-    // This would process each frame to detect the backgammon board
-    // For now, we'll simulate detection
-    
-    const detected = Math.random() > 0.7; // Simulate detection
-    
-    if (detected !== boardDetected) {
-      // runOnJS would be used here to update state
-      // setBoardDetected(detected);
-    }
-  }, [boardDetected]);
+  // Temporarily disable frame processor to avoid worklets-core error
+  // const frameProcessor = useFrameProcessor((frame) => {
+  //   'worklet';
+  // }, []);
 
   const capturePhoto = useCallback(async () => {
     if (!camera.current || isProcessingImage) return;
@@ -156,8 +142,7 @@ const CameraScreen: React.FC = () => {
           <Button
             title="Grant Permission"
             onPress={async () => {
-              const permission = await Camera.requestCameraPermission();
-              setHasPermission(permission === 'authorized');
+              await requestPermission();
             }}
             style={styles.permissionButton}
           />
@@ -166,11 +151,12 @@ const CameraScreen: React.FC = () => {
     );
   }
 
-  if (!device) {
+  if (hasPermission && !device) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>No camera device found</Text>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={styles.loadingText}>Initializing camera…</Text>
         </View>
       </SafeAreaView>
     );
@@ -184,7 +170,7 @@ const CameraScreen: React.FC = () => {
         device={device}
         isActive={isActive}
         photo={true}
-        frameProcessor={frameProcessor}
+        // frameProcessor={frameProcessor}
       />
 
       {/* Board Detection Overlay */}
@@ -329,6 +315,16 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.lg,
     color: colors.error,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.md,
   },
 });
 
