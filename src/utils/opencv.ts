@@ -1,5 +1,5 @@
 // OpenCV processing pipeline for backgammon board analysis
-import type { BoardDetection, PieceDetection, BoardPosition, Point2D } from '@/types';
+import type { BoardDetection, PieceDetection, BoardPosition, Point2D, Point } from '@/types';
 
 // Note: This is a placeholder implementation
 // In a real app, you would use react-native-opencv-tutorial for actual CV processing
@@ -231,4 +231,53 @@ export class BackgammonCV {
 }
 
 export const backgammonCV = BackgammonCV.getInstance();
+
+// Lightweight helpers for initial analysis
+export const extractMockPosition = (): BoardPosition => {
+  const points: Point[] = Array.from({ length: 24 }, (_, i) => ({ number: i + 1, pieces: [] }));
+  const push = (pt: number, n: number, color: 'white' | 'red') => {
+    for (let i = 0; i < n; i++) points[pt - 1].pieces.push({ color, id: `${color}-${pt}-${i}` });
+  };
+  push(1, 2, 'white');
+  push(6, 5, 'red');
+  push(8, 3, 'red');
+  push(12, 5, 'white');
+  push(13, 5, 'red');
+  push(17, 3, 'white');
+  push(19, 5, 'white');
+  push(24, 2, 'red');
+  return {
+    id: Date.now().toString(),
+    points,
+    bar: { white: 0, red: 0 },
+    bearOff: { white: 0, red: 0 },
+    toMove: 'white',
+    timestamp: new Date(),
+  };
+};
+
+export const computePositionId = (position: BoardPosition): string => {
+  const counts = position.points
+    .map(p => `${p.pieces.filter(x => x.color === 'white').length}-${p.pieces.filter(x => x.color === 'red').length}`)
+    .join('.');
+  return `BM:${counts}`;
+};
+
+export const heuristicEvaluate = (position: BoardPosition) => {
+  const whiteTotal = position.points.reduce((s, p) => s + p.pieces.filter(x => x.color === 'white').length, 0) + position.bar.white;
+  const redTotal = position.points.reduce((s, p) => s + p.pieces.filter(x => x.color === 'red').length, 0) + position.bar.red;
+  const diff = redTotal - whiteTotal; // positive favors white
+  const evaluation = Math.max(-2, Math.min(2, diff / 15));
+  return {
+    positionId: computePositionId(position),
+    winningChances: {
+      win: Math.max(5, Math.min(95, 50 + evaluation * 20)),
+      gammon: 10,
+      backgammon: 2,
+    },
+    evaluation,
+    bestMoves: [],
+    confidence: 0.5,
+  } as const;
+};
 

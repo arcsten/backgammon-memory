@@ -25,6 +25,10 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
   const halfWidth = playAreaWidth / 2;
   const pointWidth = halfWidth / 6; // 6 points per side half
   const pointHeight = height * 0.42;
+  const chipRadius = Math.min(8, pointWidth * 0.35);
+  const chipSpacing = chipRadius * 2 + 2;
+  const numberBand = 14; // space above and below board for numbers
+  const offsetY = numberBand; // vertical shift for entire board area
 
   // Mock position data if none provided
   const mockPoints = Array.from({ length: 24 }, (_, i) => ({
@@ -67,7 +71,7 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
     }
 
     const x = baseX + column * pointWidth;
-    const y = isTop ? 0 : height - pointHeight;
+    const y = (isTop ? 0 : height - pointHeight) + offsetY;
     
     // Point triangle
     const trianglePoints = isTop
@@ -88,12 +92,12 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
           strokeWidth="0.5"
         />
         
-        {/* Point number */}
+        {/* Point number (outside board) */}
         <SvgText
-          x={x + pointWidth/2}
-          y={isTop ? y + pointHeight - 5 : y + 15}
+          x={Math.round(x + pointWidth/2)}
+          y={isTop ? offsetY - 2 : offsetY + height + 10}
           fontSize="10"
-          fill={colors.text}
+          fill={colors.textSecondary}
           textAnchor="middle"
         >
           {pointNumber}
@@ -101,17 +105,24 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
         
         {/* Pieces */}
         {pieces.slice(0, 5).map((piece, index) => {
-          const pieceX = x + pointWidth/2;
-          const pieceY = isTop 
-            ? y + pointHeight - 15 - (index * 12)
-            : y + 15 + (index * 12);
+          const pieceX = Math.round(x + pointWidth/2);
+          const startTop = offsetY + chipRadius + 4; // from outer edge inward
+          const startBottom = offsetY + height - chipRadius - 4;
+          let pieceY = isTop
+            ? startTop + index * chipSpacing
+            : startBottom - index * chipSpacing;
+          // Clamp inside triangle area
+          const minY = y + chipRadius + 2;
+          const maxY = y + pointHeight - chipRadius - 2;
+          if (isTop) pieceY = Math.min(pieceY, maxY);
+          else pieceY = Math.max(pieceY, minY);
           
           return (
             <Circle
               key={piece.id}
               cx={pieceX}
               cy={pieceY}
-              r="6"
+              r={chipRadius}
               fill={piece.color === 'white' ? colors.pieceWhite : colors.pieceRed}
               stroke={colors.black}
               strokeWidth="0.5"
@@ -122,8 +133,8 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
         {/* Overflow indicator */}
         {pieces.length > 5 && (
           <SvgText
-            x={x + pointWidth/2}
-            y={isTop ? y + pointHeight - 15 - (4 * 12) : y + 15 + (4 * 12)}
+            x={Math.round(x + pointWidth/2)}
+            y={isTop ? (y + pointHeight - chipRadius - 2 - (4 * chipSpacing)) : (y + chipRadius + 2 + (4 * chipSpacing))}
             fontSize="8"
             fill={colors.text}
             textAnchor="middle"
@@ -209,11 +220,12 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
 
   return (
     <View style={[styles.container, style]}>
-      <Svg width={width} height={height} style={styles.svg}>
+      <Svg width={width} height={height + numberBand * 2} style={styles.svg}>
         {/* Board background */}
         <Rect
           width={width}
           height={height}
+          y={offsetY}
           fill={colors.surface}
           stroke={colors.border}
           strokeWidth="2"
@@ -222,7 +234,7 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
         {/* Middle separator */}
         <Rect
           x={gutter + halfWidth}
-          y={0}
+          y={offsetY}
           width={barWidth}
           height={height}
           fill={colors.surface}

@@ -16,6 +16,8 @@ import {
 } from 'react-native-vision-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator } from 'react-native';
+import { backgammonCV, extractMockPosition, heuristicEvaluate } from '@/utils/opencv';
+import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
@@ -47,6 +49,7 @@ const CameraScreen: React.FC = () => {
     isProcessingImage,
     setProcessingImage,
     setCurrentPosition,
+    setCurrentAnalysis,
     addToHistory,
   } = useAppStore();
 
@@ -73,6 +76,8 @@ const CameraScreen: React.FC = () => {
   //   'worklet';
   // }, []);
 
+  const navigation = useNavigation();
+
   const capturePhoto = useCallback(async () => {
     if (!camera.current || isProcessingImage) return;
 
@@ -90,26 +95,18 @@ const CameraScreen: React.FC = () => {
         flash: flashEnabled ? 'on' : 'off',
       });
 
-      // TODO: Process the photo with OpenCV pipeline
-      // For now, simulate processing
-      setTimeout(() => {
-        // Simulate successful analysis
-        const mockPosition = {
-          id: Date.now().toString(),
-          points: [], // TODO: Implement actual position parsing
-          bar: { white: 0, red: 0 },
-          bearOff: { white: 0, red: 0 },
-          toMove: 'white' as const,
-          timestamp: new Date(),
-        };
+      // For now, use mock pipeline (keep frame processors disabled)
+      const position = extractMockPosition();
+      const analysis = heuristicEvaluate(position);
 
-        setCurrentPosition(mockPosition);
-        addToHistory(mockPosition);
-        setProcessingImage(false);
+      setCurrentPosition(position);
+      setCurrentAnalysis(analysis);
+      addToHistory({ ...position, analysis });
+      setProcessingImage(false);
 
-        // Navigate to analysis screen would happen here
-        Alert.alert('Success', 'Board position captured and analyzed!');
-      }, 2000);
+      // Navigate to analysis
+      // @ts-ignore navigation typed via RootTabParamList
+      navigation.navigate('Analysis');
 
     } catch (error) {
       console.error('Failed to capture photo:', error);
