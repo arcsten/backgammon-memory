@@ -1,0 +1,336 @@
+import React, { useRef, useState, useCallback, useEffect } from 'react';
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  Alert,
+  Dimensions,
+  SafeAreaView,
+} from 'react-native';
+import {
+  Camera,
+  useCameraDevices,
+  useFrameProcessor,
+} from 'react-native-vision-camera';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
+
+import { colors, spacing, typography } from '@/utils/theme';
+import { useAppStore } from '@/store/useAppStore';
+import Button from '@/components/ui/Button';
+import BoardOverlay from '@/components/camera/BoardOverlay';
+import CaptureButton from '@/components/camera/CaptureButton';
+
+const { width, height } = Dimensions.get('window');
+
+const CameraScreen: React.FC = () => {
+  const camera = useRef<Camera>(null);
+  const devices = useCameraDevices();
+  const device = devices.back;
+
+  const [hasPermission, setHasPermission] = useState(false);
+  const [isActive, setIsActive] = useState(true);
+  const [flashEnabled, setFlashEnabled] = useState(false);
+  const [boardDetected, setBoardDetected] = useState(false);
+
+  const {
+    settings,
+    isProcessingImage,
+    setProcessingImage,
+    setCurrentPosition,
+    addToHistory,
+  } = useAppStore();
+
+  // Animation values
+  const pulseAnimation = useSharedValue(1);
+  const overlayOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    // Request camera permission
+    Camera.requestCameraPermission().then((permission) => {
+      setHasPermission(permission === 'authorized');
+    });
+
+    // Start pulse animation
+    pulseAnimation.value = withRepeat(
+      withTiming(1.1, { duration: 1000 }),
+      -1,
+      true
+    );
+  }, []);
+
+  useEffect(() => {
+    // Update flash from settings
+    setFlashEnabled(settings.flashEnabled);
+  }, [settings.flashEnabled]);
+
+  const frameProcessor = useFrameProcessor((frame) => {
+    'worklet';
+    
+    // TODO: Implement OpenCV board detection here
+    // This would process each frame to detect the backgammon board
+    // For now, we'll simulate detection
+    
+    const detected = Math.random() > 0.7; // Simulate detection
+    
+    if (detected !== boardDetected) {
+      // runOnJS would be used here to update state
+      // setBoardDetected(detected);
+    }
+  }, [boardDetected]);
+
+  const capturePhoto = useCallback(async () => {
+    if (!camera.current || isProcessingImage) return;
+
+    try {
+      setProcessingImage(true);
+      
+      if (settings.hapticFeedback) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      const photo = await camera.current.takePhoto({
+        quality: 85,
+        enableAutoRedEyeReduction: true,
+        enableAutoStabilization: true,
+        flash: flashEnabled ? 'on' : 'off',
+      });
+
+      // TODO: Process the photo with OpenCV pipeline
+      // For now, simulate processing
+      setTimeout(() => {
+        // Simulate successful analysis
+        const mockPosition = {
+          id: Date.now().toString(),
+          points: [], // TODO: Implement actual position parsing
+          bar: { white: 0, red: 0 },
+          bearOff: { white: 0, red: 0 },
+          toMove: 'white' as const,
+          timestamp: new Date(),
+        };
+
+        setCurrentPosition(mockPosition);
+        addToHistory(mockPosition);
+        setProcessingImage(false);
+
+        // Navigate to analysis screen would happen here
+        Alert.alert('Success', 'Board position captured and analyzed!');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Failed to capture photo:', error);
+      setProcessingImage(false);
+      Alert.alert('Error', 'Failed to capture photo. Please try again.');
+    }
+  }, [isProcessingImage, settings, flashEnabled]);
+
+  const toggleFlash = useCallback(() => {
+    setFlashEnabled(!flashEnabled);
+  }, [flashEnabled]);
+
+  const captureButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseAnimation.value }],
+  }));
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
+
+  if (!hasPermission) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.permissionContainer}>
+          <Ionicons name="camera-outline" size={64} color={colors.textSecondary} />
+          <Text style={styles.permissionTitle}>Camera Access Required</Text>
+          <Text style={styles.permissionText}>
+            We need access to your camera to analyze backgammon board positions.
+          </Text>
+          <Button
+            title="Grant Permission"
+            onPress={async () => {
+              const permission = await Camera.requestCameraPermission();
+              setHasPermission(permission === 'authorized');
+            }}
+            style={styles.permissionButton}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!device) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>No camera device found</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Camera
+        ref={camera}
+        style={styles.camera}
+        device={device}
+        isActive={isActive}
+        photo={true}
+        frameProcessor={frameProcessor}
+      />
+
+      {/* Board Detection Overlay */}
+      <BoardOverlay detected={boardDetected} />
+
+      {/* Header Controls */}
+      <SafeAreaView style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={toggleFlash}
+        >
+          <Ionicons
+            name={flashEnabled ? 'flash' : 'flash-off'}
+            size={24}
+            color={flashEnabled ? colors.secondary : colors.text}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => {
+            // TODO: Show help modal
+            Alert.alert('Help', 'Position the backgammon board clearly in the frame and tap capture.');
+          }}
+        >
+          <Ionicons name="help-circle-outline" size={24} color={colors.text} />
+        </TouchableOpacity>
+      </SafeAreaView>
+
+      {/* Bottom Controls */}
+      <View style={styles.bottomControls}>
+        <Text style={styles.statusText}>
+          {boardDetected ? '✅ Board detected' : '🎯 Position board clearly'}
+        </Text>
+        
+        <Animated.View style={captureButtonStyle}>
+          <CaptureButton
+            onPress={capturePhoto}
+            loading={isProcessingImage}
+            disabled={!boardDetected && !__DEV__} // Allow capture in dev mode
+          />
+        </Animated.View>
+      </View>
+
+      {/* Processing Overlay */}
+      {isProcessingImage && (
+        <Animated.View style={[styles.processingOverlay, overlayStyle]}>
+          <Text style={styles.processingText}>Analyzing board position...</Text>
+        </Animated.View>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  camera: {
+    flex: 1,
+  },
+  header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+  },
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.overlay,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomControls: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.md,
+  },
+  statusText: {
+    color: colors.text,
+    fontSize: typography.fontSize.md,
+    fontFamily: typography.fontFamily.medium,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  processingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.overlay,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  processingText: {
+    color: colors.text,
+    fontSize: typography.fontSize.lg,
+    fontFamily: typography.fontFamily.medium,
+    textAlign: 'center',
+  },
+  permissionContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  permissionTitle: {
+    fontSize: typography.fontSize.xl,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.text,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  permissionText: {
+    fontSize: typography.fontSize.md,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: typography.lineHeight.relaxed * typography.fontSize.md,
+    marginBottom: spacing.xl,
+  },
+  permissionButton: {
+    minWidth: 200,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    fontSize: typography.fontSize.lg,
+    color: colors.error,
+    textAlign: 'center',
+  },
+});
+
+export default CameraScreen;
+
