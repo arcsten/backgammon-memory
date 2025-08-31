@@ -5,4 +5,5 @@
 #ifdef __cplusplus
 namespace facebook { namespace jsi { class Runtime; }}
 extern "C" void installWildBGEngine(facebook::jsi::Runtime *rt);
+extern "C" void installBackgammonCV(facebook::jsi::Runtime *rt);
 #endif

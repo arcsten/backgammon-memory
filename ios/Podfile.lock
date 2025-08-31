@@ -108,6 +108,7 @@ PODS:
     - hermes-engine/Pre-built (= 0.72.10)
   - hermes-engine/Pre-built (0.72.10)
   - libevent (2.1.12)
+  - OpenCV (4.3.0)
   - RCT-Folly (2021.07.22.00):
     - boost
     - DoubleConversion
@@ -602,6 +603,7 @@ DEPENDENCIES:
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - libevent (~> 2.1.12)
+  - OpenCV
   - RCT-Folly (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCTRequired (from `../node_modules/react-native/Libraries/RCTRequired`)
   - RCTTypeSafety (from `../node_modules/react-native/Libraries/TypeSafety`)
@@ -650,6 +652,7 @@ SPEC REPOS:
   trunk:
     - fmt
     - libevent
+    - OpenCV
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -819,6 +822,7 @@ SPEC CHECKSUMS:
   glog: 04b94705f318337d7ead9e6d17c019bd9b1f6b1b
   hermes-engine: 90e4033deb00bee33330a9f15eff0f874bd82f6d
   libevent: 4049cae6c81cdb3654a443be001fb9bdceff7913
+  OpenCV: 681e0451c1e54c5930a8922277f817ed5d5ab459
   RCT-Folly: 8dc08ca5a393b48b1c523ab6220dfdcc0fe000ad
   RCTRequired: b4d3068afa6f52ec5260a8417053b1f1b421483d
   RCTTypeSafety: a4551b3d338c96435f63bf06d564055c1d3cc0ac
@@ -863,6 +867,6 @@ SPEC CHECKSUMS:
   WildBGEngine: c4915c40aaf0a4eb39da90fe0a720a003400194c
   Yoga: d0003f849d2b5224c072cef6568b540d8bb15cd3
 
-PODFILE CHECKSUM: e89ae8575f40055140abb75c9d2a7a474fb4bbe6
+PODFILE CHECKSUM: c0475e28da46f8770c5ad703758ef7f2459a5ba8
 
 COCOAPODS: 1.16.2

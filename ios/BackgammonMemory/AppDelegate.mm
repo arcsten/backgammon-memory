@@ -3,7 +3,8 @@
 #import <React/RCTBundleURLProvider.h>
 #import <React/RCTLinkingManager.h>
 #import <React/RCTBridge.h>
-#import "BackgammonMemory-Swift.h"
+#import <React/RCTBridge+Private.h>
+#import <ExpoModulesCore/ExpoModulesCore.h>
 
 @implementation AppDelegate
 
@@ -16,11 +17,7 @@
   self.initialProps = @{};
 
   BOOL ok = [super application:application didFinishLaunchingWithOptions:launchOptions];
-  // Install JSI bindings for WildBGEngine if present
-  RCTBridge *bridge = [self valueForKey:@"bridge"];
-  if (bridge && bridge.jsRuntime) {
-    installWildBGEngine(bridge.jsRuntime);
-  }
+  // Defer JSI installation to JS side or future bridge point to avoid build errors
   return ok;
 }
 

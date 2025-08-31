@@ -4,8 +4,12 @@ require File.join(File.dirname(`node --print "require.resolve('react-native/pack
 require 'json'
 podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties.json'))) rescue {}
 
+# Disable VisionCamera frame processors (react-native-worklets-core) to avoid Xcode 16 header issues
+$VCDisableFrameProcessors = true
+
 ENV['RCT_NEW_ARCH_ENABLED'] = podfile_properties['newArchEnabled'] == 'true' ? '1' : '0'
 ENV['EX_DEV_CLIENT_NETWORK_INSPECTOR'] = podfile_properties['EX_DEV_CLIENT_NETWORK_INSPECTOR']
+ENV['VISION_CAMERA_DISABLE_FRAME_PROCESSORS'] = '1'
 
 platform :ios, podfile_properties['ios.deploymentTarget'] || '13.0'
 install! 'cocoapods',
@@ -57,6 +61,9 @@ target 'BackgammonMemory' do
     :flipper_configuration => flipper_config
   )
 
+  # OpenCV for on-device CV processing
+  pod 'OpenCV'
+
   pod 'WildBGEngine', :path => '.'
 
 
@@ -75,6 +82,19 @@ target 'BackgammonMemory' do
       target_installation_result.resource_bundle_targets.each do |resource_bundle_target|
         resource_bundle_target.build_configurations.each do |config|
           config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+        end
+      end
+    end
+
+    # Ensure react-native-worklets-core can find ReactCommon headers
+    installer.pods_project.targets.each do |target|
+      if target.name == 'react-native-worklets-core'
+        target.build_configurations.each do |config|
+          config.build_settings['HEADER_SEARCH_PATHS'] ||= '$(inherited)'
+          config.build_settings['HEADER_SEARCH_PATHS'] << ' $(PODS_ROOT)/Headers/Public/**'
+          config.build_settings['HEADER_SEARCH_PATHS'] << ' $(PODS_ROOT)/../../node_modules/react-native/ReactCommon/**'
+          config.build_settings['HEADER_SEARCH_PATHS'] << ' $(PODS_ROOT)/../../node_modules/react-native/React/**'
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
         end
       end
     end

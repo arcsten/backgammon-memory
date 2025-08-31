@@ -1,6 +1,15 @@
 // OpenCV processing pipeline for backgammon board analysis
 import type { BoardDetection, PieceDetection, BoardPosition, Point2D, Point } from '@/types';
 
+// JSI binding installed by iOS native code
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const globalAny = global as any;
+const NativeCV: { processImage: (imageUri: string) => string } | null = globalAny?.BackgammonCV ?? null;
+// Fallback RN bridge if JSI not available
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { NativeModules } = require('react-native');
+const CVBridge: { processImage: (uri: string) => Promise<string> } | null = NativeModules?.BackgammonCVModule ?? null;
+
 // Note: This is a placeholder implementation
 // In a real app, you would use react-native-opencv-tutorial for actual CV processing
 
@@ -194,34 +203,41 @@ export class BackgammonCV {
     confidence: number;
   }> {
     try {
-      // Step 1: Preprocess image
-      const processedImage = await this.preprocessImage(imageUri);
-      
-      // Step 2: Detect board
-      const boardDetection = await this.detectBoard(processedImage);
-      
-      if (!boardDetection.isValid) {
-        throw new Error('Board not detected');
+      if (NativeCV && typeof NativeCV.processImage === 'function') {
+        const resultStr = NativeCV.processImage(imageUri);
+        const parsed = JSON.parse(resultStr) as {
+          position: BoardPosition;
+          detection: BoardDetection;
+          confidence: number;
+        };
+        // Convert timestamp if needed
+        if (parsed?.position && typeof (parsed.position as any).timestamp === 'number') {
+          (parsed.position as any).timestamp = new Date((parsed.position as any).timestamp);
+        }
+        return parsed;
+      } else if (CVBridge && typeof CVBridge.processImage === 'function') {
+        const resultStr = await CVBridge.processImage(imageUri);
+        const parsed = JSON.parse(resultStr) as {
+          position: BoardPosition;
+          detection: BoardDetection;
+          confidence: number;
+        };
+        if (parsed?.position && typeof (parsed.position as any).timestamp === 'number') {
+          (parsed.position as any).timestamp = new Date((parsed.position as any).timestamp);
+        }
+        return parsed;
       }
-      
-      // Step 3: Segment points
+
+      // Fallback to JS mock pipeline
+      const processedImage = await this.preprocessImage(imageUri);
+      const boardDetection = await this.detectBoard(processedImage);
+      if (!boardDetection.isValid) throw new Error('Board not detected');
       const pointLocations = await this.segmentPoints(processedImage, boardDetection);
-      
-      // Step 4: Detect pieces
       const pieces = await this.detectPieces(processedImage, pointLocations);
-      
-      // Step 5: Extract position
       const position = await this.extractPosition(pieces);
-      
-      // Calculate overall confidence
-      const confidence = boardDetection.confidence * 0.4 + 
-                        (pieces.reduce((sum, p) => sum + p.confidence, 0) / pieces.length) * 0.6;
-      
-      return {
-        position,
-        detection: boardDetection,
-        confidence: Math.min(confidence, 1.0),
-      };
+      const confidence = boardDetection.confidence * 0.4 +
+        (pieces.reduce((sum, p) => sum + p.confidence, 0) / pieces.length) * 0.6;
+      return { position, detection: boardDetection, confidence: Math.min(confidence, 1.0) };
       
     } catch (error) {
       console.error('Error processing image:', error);

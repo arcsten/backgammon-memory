@@ -5,7 +5,7 @@
 
 using namespace facebook;
 
-static jsi::Value evaluatePosition(jsi::Runtime &rt, const jsi::Value *args, size_t count) {
+static jsi::Value evaluatePosition(jsi::Runtime &rt, const jsi::Value &thisValue, const jsi::Value *args, size_t count) {
   // Arg0: encoded string with counts per point in order 1..24,bar/bearoff ignored
   // Build pips[26] as required by wildbg-c: idx 25=player bar, idx0=opponent bar, 1..24 point counts (player+ / opponent-)
   int pips[26] = {0};
@@ -52,7 +52,7 @@ static jsi::Value evaluatePosition(jsi::Runtime &rt, const jsi::Value *args, siz
   return res;
 }
 
-static jsi::Value initEngine(jsi::Runtime &rt, const jsi::Value *args, size_t count) {
+static jsi::Value initEngine(jsi::Runtime &rt, const jsi::Value &thisValue, const jsi::Value *args, size_t count) {
   return jsi::Value(true);
 }
 

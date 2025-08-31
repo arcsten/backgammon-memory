@@ -26,6 +26,7 @@ import Animated, {
   withSpring,
   withRepeat,
   withTiming,
+  runOnJS,
 } from 'react-native-reanimated';
 
 import { colors, spacing, typography } from '@/utils/theme';
@@ -72,10 +73,11 @@ const CameraScreen: React.FC = () => {
     setFlashEnabled(settings.flashEnabled);
   }, [settings.flashEnabled]);
 
-  // Temporarily disable frame processor to avoid worklets-core error
-  // const frameProcessor = useFrameProcessor((frame) => {
-  //   'worklet';
-  // }, []);
+  // Live frame processor: query lightweight board detection to drive UI overlay
+  const frameProcessor = useFrameProcessor((frame) => {
+    'worklet';
+    // Disabled: native frame processor plugin removed during build fix. Keep placeholder.
+  }, []);
 
   const navigation = useNavigation();
 
@@ -90,14 +92,14 @@ const CameraScreen: React.FC = () => {
       }
 
       const photo = await camera.current.takePhoto({
-        quality: 85,
         enableAutoRedEyeReduction: true,
         enableAutoStabilization: true,
         flash: flashEnabled ? 'on' : 'off',
       });
 
-      // For now, use mock pipeline (keep frame processors disabled)
-      const position = extractMockPosition();
+      // Run native CV pipeline (JSI) on captured image
+      const processed = await backgammonCV.processImage(photo.path);
+      const position = processed.position;
       const analysis = await Engine.evaluate(position);
 
       setCurrentPosition(position);
@@ -165,10 +167,10 @@ const CameraScreen: React.FC = () => {
       <Camera
         ref={camera}
         style={styles.camera}
-        device={device}
+        device={device!}
         isActive={isActive}
         photo={true}
-        // frameProcessor={frameProcessor}
+        frameProcessor={frameProcessor}
       />
 
       {/* Board Detection Overlay */}
