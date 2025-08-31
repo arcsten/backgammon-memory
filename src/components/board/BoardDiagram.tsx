@@ -165,7 +165,7 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
         />
         
         {/* White pieces on bar */}
-        {Array.from({ length: Math.min(barWhite, 8) }, (_, i) => (
+        {Array.from({ length: Math.min(barWhite, 12) }, (_, i) => (
           <Circle
             key={`bar-white-${i}`}
             cx={barX + barWidth/2}
@@ -178,7 +178,7 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
         ))}
         
         {/* Red pieces on bar */}
-        {Array.from({ length: Math.min(barRed, 8) }, (_, i) => (
+        {Array.from({ length: Math.min(barRed, 12) }, (_, i) => (
           <Circle
             key={`bar-red-${i}`}
             cx={barX + barWidth/2}
@@ -218,6 +218,37 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
     );
   };
 
+  const renderBearOff = () => {
+    const whiteOff = position?.bearOff?.white || 0;
+    const redOff = position?.bearOff?.red || 0;
+    if (!whiteOff && !redOff) return null;
+
+    const colX = width - gutter - 6; // near right edge
+    const maxShown = 12;
+    const drawStack = (count: number, isTop: boolean, color: string) => {
+      const items = Math.min(count, maxShown);
+      const startY = isTop ? offsetY + chipRadius + 2 : offsetY + height - chipRadius - 2;
+      return Array.from({ length: items }, (_, i) => (
+        <Circle
+          key={`${isTop ? 'top' : 'bot'}-bear-${i}`}
+          cx={colX}
+          cy={isTop ? startY + i * (chipRadius + 2) : startY - i * (chipRadius + 2)}
+          r={chipRadius * 0.9}
+          fill={color}
+          stroke={colors.black}
+          strokeWidth="0.5"
+        />
+      ));
+    };
+
+    return (
+      <G key="bearoff">
+        {drawStack(redOff, true, colors.pieceRed)}
+        {drawStack(whiteOff, false, colors.pieceWhite)}
+      </G>
+    );
+  };
+
   return (
     <View style={[styles.container, style]}>
       <Svg width={width} height={height + numberBand * 2} style={styles.svg}>
@@ -250,6 +281,9 @@ const BoardDiagram: React.FC<BoardDiagramProps> = ({
         
         {/* Bar */}
         {renderBar()}
+
+        {/* Bear-off stacks (right edge) */}
+        {renderBearOff()}
       </Svg>
     </View>
   );

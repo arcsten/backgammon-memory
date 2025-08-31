@@ -281,3 +281,83 @@ export const heuristicEvaluate = (position: BoardPosition) => {
   } as const;
 };
 
+export const generateRandomPosition = (): BoardPosition => {
+  // Generate a simple legal-like random position: no point contains both colors,
+  // each color has exactly 15 checkers, max 5 per point, no bar/bearoff.
+  const remainingWhite = { value: 15 };
+  const remainingRed = { value: 15 };
+  const countsW = new Array<number>(24).fill(0);
+  const countsR = new Array<number>(24).fill(0);
+  const allPoints = Array.from({ length: 24 }, (_, i) => i);
+  const perPointCap = 10; // allow stacks >5; UI shows "+N" beyond 5
+  // Shuffle helper
+  const shuffle = (arr: number[]) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  };
+  const distribute = (counts: number[], pool: number[], remainingRef: { value: number }) => {
+    // Round-robin add 1 up to 5 per point until remaining is 0
+    const seq = [...pool];
+    shuffle(seq);
+    while (remainingRef.value > 0) {
+      let progressed = false;
+      for (let idx = 0; idx < seq.length && remainingRef.value > 0; idx++) {
+        const p = seq[idx];
+        if (counts[p] < perPointCap) {
+          counts[p] += 1;
+          remainingRef.value -= 1;
+          progressed = true;
+        }
+      }
+      if (!progressed) break; // all full (5)
+    }
+  };
+
+  // Choose distinct point sets
+  const pool = [...allPoints];
+  shuffle(pool);
+  const whiteSetSize = Math.max(3, Math.min(8, 3 + Math.floor(Math.random() * 6))); // 3..8
+  const whiteSet = pool.splice(0, whiteSetSize);
+  const redSetSize = Math.max(3, Math.min(8, 3 + Math.floor(Math.random() * 6)));
+  const redSet = pool.splice(0, Math.min(redSetSize, pool.length));
+  // Ensure enough capacity; if not, borrow from remaining pool
+  if (redSet.length * perPointCap < remainingRed.value) {
+    while (pool.length > 0 && redSet.length * perPointCap < remainingRed.value) redSet.push(pool.shift()!);
+  }
+  if (whiteSet.length * perPointCap < remainingWhite.value) {
+    while (pool.length > 0 && whiteSet.length * perPointCap < remainingWhite.value) whiteSet.push(pool.shift()!);
+  }
+
+  distribute(countsW, whiteSet, remainingWhite);
+  distribute(countsR, redSet, remainingRed);
+
+  // Random bars and bear-offs within remaining caps
+  const toMove = Math.random() > 0.5 ? 'white' : 'red';
+  const randCap = (max: number) => (max <= 0 ? 0 : Math.floor(Math.random() * (max + 1)));
+  const barW = randCap(Math.min(3, remainingWhite.value));
+  remainingWhite.value -= barW;
+  const barR = randCap(Math.min(3, remainingRed.value));
+  remainingRed.value -= barR;
+  const bearW = randCap(Math.min(6, remainingWhite.value));
+  remainingWhite.value -= bearW;
+  const bearR = randCap(Math.min(6, remainingRed.value));
+  remainingRed.value -= bearR;
+
+  const points: Point[] = Array.from({ length: 24 }, (_, i) => ({ number: i + 1, pieces: [] }));
+  for (let i = 0; i < 24; i++) {
+    for (let k = 0; k < countsW[i]; k++) points[i].pieces.push({ color: 'white', id: `w-${i}-${k}` });
+    for (let k = 0; k < countsR[i]; k++) points[i].pieces.push({ color: 'red', id: `r-${i}-${k}` });
+  }
+
+  return {
+    id: `rand-${Date.now()}`,
+    points,
+    bar: { white: barW, red: barR },
+    bearOff: { white: bearW, red: bearR },
+    toMove,
+    timestamp: new Date(),
+  };
+};
+

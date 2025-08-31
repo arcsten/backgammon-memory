@@ -17,16 +17,12 @@ Pod::Spec.new do |s|
   }
 
   s.dependency 'React-Core'
-  s.vendored_frameworks = []
-
-  s.subspec 'Core' do |core|
-    core.source_files = 'ThirdParty/wildbg/**/*.{h,hpp,c,cxx,cc,cpp,rs}'
-    core.exclude_files = ['ThirdParty/wildbg/training/**', 'ThirdParty/wildbg/docs/**']
-    core.pod_target_xcconfig = {
-      'CLANG_CXX_LANGUAGE_STANDARD' => 'c++17',
-      'CLANG_CXX_LIBRARY' => 'libc++'
-    }
-  end
+  s.vendored_frameworks = 'WildBGXC/Wildbg.xcframework'
+  s.pod_target_xcconfig = {
+    'HEADER_SEARCH_PATHS' => '$(PODS_TARGET_SRCROOT)/WildBGXC/Wildbg.xcframework/ios-arm64/Headers $(PODS_TARGET_SRCROOT)/WildBGXC/Wildbg.xcframework/ios-arm64_x86_64-simulator/Headers',
+    'CLANG_CXX_LANGUAGE_STANDARD' => 'c++17',
+    'CLANG_CXX_LIBRARY' => 'libc++'
+  }
 end
 
 

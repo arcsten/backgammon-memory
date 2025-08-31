@@ -18,9 +18,11 @@ import BoardDiagram from '@/components/board/BoardDiagram';
 import WinningChancesCard from '@/components/analysis/WinningChancesCard';
 import BestMovesList from '@/components/analysis/BestMovesList';
 import EvaluationMeter from '@/components/analysis/EvaluationMeter';
+import { generateRandomPosition } from '@/utils/opencv';
+import Engine from '@/utils/engine';
 
 const AnalysisScreen: React.FC = () => {
-  const { currentPosition, currentAnalysis } = useAppStore();
+  const { currentPosition, currentAnalysis, setCurrentPosition, setCurrentAnalysis, addToHistory } = useAppStore();
 
   // Mock data for demonstration
   const mockAnalysis = {
@@ -44,6 +46,14 @@ const AnalysisScreen: React.FC = () => {
   const copyPositionId = async () => {
     await Clipboard.setStringAsync(analysis.positionId);
     Alert.alert('Copied', 'Position ID copied to clipboard');
+  };
+
+  const shufflePosition = async () => {
+    const pos = generateRandomPosition();
+    setCurrentPosition(pos);
+    const evalRes = await Engine.evaluate(pos);
+    setCurrentAnalysis(evalRes);
+    addToHistory({ ...pos, analysis: evalRes });
   };
 
   const shareAnalysis = async () => {
@@ -103,7 +113,10 @@ const AnalysisScreen: React.FC = () => {
 
       {/* Position ID */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Position ID</Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Position ID</Text>
+          <Button title="Shuffle" size="small" onPress={shufflePosition} />
+        </View>
         <TouchableOpacity
           style={styles.positionIdContainer}
           onPress={copyPositionId}
@@ -177,6 +190,12 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.lg,
     fontFamily: typography.fontFamily.bold,
     color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.sm,
   },
   boardContainer: {

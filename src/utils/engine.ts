@@ -42,17 +42,34 @@ export const Engine = {
     } catch (e) {
       console.warn('Native engine evaluate failed, using JS fallback', e);
     }
-    // JS fallback: lightweight heuristic (same as current)
-    const whiteTotal = position.points.reduce((s, p) => s + p.pieces.filter(x => x.color === 'white').length, 0) + position.bar.white;
-    const redTotal = position.points.reduce((s, p) => s + p.pieces.filter(x => x.color === 'red').length, 0) + position.bar.red;
-    const diff = redTotal - whiteTotal;
-    const evaluation = Math.max(-2, Math.min(2, diff / 15));
+    // JS fallback: lightweight heuristic using pip counts and distribution
+    const countColor = (color: 'white' | 'red') =>
+      position.points.reduce((s, p) => s + p.pieces.filter(x => x.color === color).length, 0);
+    const whiteTotal = countColor('white') + position.bar.white;
+    const redTotal = countColor('red') + position.bar.red;
+
+    // Pip counts: white moves towards point 1, red towards point 24
+    const whitePips = position.points.reduce((sum, p) =>
+      sum + (p.number) * p.pieces.filter(x => x.color === 'white').length, 0);
+    const redPips = position.points.reduce((sum, p) =>
+      sum + (25 - p.number) * p.pieces.filter(x => x.color === 'red').length, 0);
+
+    // Blot penalty: points with exactly one checker
+    const whiteBlots = position.points.filter(p => p.pieces.filter(x => x.color === 'white').length === 1).length;
+    const redBlots = position.points.filter(p => p.pieces.filter(x => x.color === 'red').length === 1).length;
+
+    // Normalize advantages (lower pips better)
+    const pipAdv = (redPips - whitePips) / 60; // scale to roughly [-5,5] early game
+    const blotAdv = (redBlots - whiteBlots) * 0.2;
+    const materialAdv = (whiteTotal - redTotal) * 0.3;
+    let evaluation = pipAdv + blotAdv + materialAdv;
+    evaluation = Math.max(-3, Math.min(3, evaluation));
     return {
       positionId: encoded,
       winningChances: {
-        win: Math.max(5, Math.min(95, 50 + evaluation * 20)),
-        gammon: 10,
-        backgammon: 2,
+        win: Math.max(5, Math.min(95, 50 + evaluation * 8)),
+        gammon: Math.max(0, Math.min(30, 12 + evaluation * 2)),
+        backgammon: Math.max(0, Math.min(10, 2 + evaluation * 0.8)),
       },
       evaluation,
       bestMoves: [],

@@ -27,7 +27,12 @@ export default function App() {
   useEffect(() => {
     loadPersistedData();
     // Initialize native engine if available (no-op fallback otherwise)
-    try { Engine.init(); } catch {}
+    try {
+      const ok = Engine.init();
+      // Log whether the native JSI is available
+      // eslint-disable-next-line no-console
+      console.log('Engine(native)=', ok, 'available=', Engine.isNativeAvailable());
+    } catch {}
   }, [loadPersistedData]);
 
   return (

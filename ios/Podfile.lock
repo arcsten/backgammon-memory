@@ -570,6 +570,8 @@ PODS:
     - React
     - React-callinvoker
     - React-Core
+  - WildBGEngine (0.0.1):
+    - React-Core
   - Yoga (1.14.0)
 
 DEPENDENCIES:
@@ -641,6 +643,7 @@ DEPENDENCIES:
   - RNSVG (from `../node_modules/react-native-svg`)
   - RNVectorIcons (from `../node_modules/react-native-vector-icons`)
   - VisionCamera (from `../node_modules/react-native-vision-camera`)
+  - WildBGEngine (from `.`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -782,6 +785,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-vector-icons"
   VisionCamera:
     :path: "../node_modules/react-native-vision-camera"
+  WildBGEngine:
+    :path: "."
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -855,8 +860,9 @@ SPEC CHECKSUMS:
   RNVectorIcons: 2a7ec3ea0e8af048e16f8d30bfaedc21d649c502
   SocketRocket: f32cd54efbe0f095c4d7594881e52619cfe80b17
   VisionCamera: 6a90992822a293947af96e77618933405a417871
+  WildBGEngine: c4915c40aaf0a4eb39da90fe0a720a003400194c
   Yoga: d0003f849d2b5224c072cef6568b540d8bb15cd3
 
-PODFILE CHECKSUM: 50227920d07619b4aca768e1eb8edaac64290d7b
+PODFILE CHECKSUM: e89ae8575f40055140abb75c9d2a7a474fb4bbe6
 
 COCOAPODS: 1.16.2

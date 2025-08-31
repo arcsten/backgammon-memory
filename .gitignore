@@ -73,3 +73,7 @@ pids
 
 # Large vendor archives
 /ios/third-party/
+
+# Ignore local WildBG build artifacts
+ios/WildBGXC/**
+*.a
