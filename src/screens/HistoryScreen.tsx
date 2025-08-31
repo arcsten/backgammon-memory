@@ -14,10 +14,12 @@ import { colors, spacing, typography, borderRadius } from '@/utils/theme';
 import { useAppStore } from '@/store/useAppStore';
 import type { HistoryItem } from '@/types';
 import PositionCard from '@/components/history/PositionCard';
+import { useNavigation } from '@react-navigation/native';
 import Button from '@/components/ui/Button';
 
 const HistoryScreen: React.FC = () => {
-  const { history, removeFromHistory, clearHistory } = useAppStore();
+  const { history, removeFromHistory, clearHistory, setCurrentPosition, setCurrentAnalysis } = useAppStore();
+  const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
@@ -106,8 +108,10 @@ const HistoryScreen: React.FC = () => {
     <PositionCard
       item={item}
       onPress={() => {
-        // Navigate to analysis with this position
-        console.log('Navigate to analysis:', item.id);
+        setCurrentPosition(item);
+        if (item.analysis) setCurrentAnalysis(item.analysis);
+        // @ts-ignore
+        navigation.navigate('Analysis');
       }}
       onSelect={() => {
         setSelectedItems(prev =>

@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Engine from '@/utils/engine';
 
 import TabNavigator from '@/navigation/TabNavigator';
 import { useAppStore } from '@/store/useAppStore';
@@ -25,6 +26,8 @@ export default function App() {
 
   useEffect(() => {
     loadPersistedData();
+    // Initialize native engine if available (no-op fallback otherwise)
+    try { Engine.init(); } catch {}
   }, [loadPersistedData]);
 
   return (
