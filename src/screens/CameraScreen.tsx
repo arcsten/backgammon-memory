@@ -16,7 +16,8 @@ import {
 } from 'react-native-vision-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator } from 'react-native';
-import { backgammonCV, extractMockPosition, heuristicEvaluate } from '@/utils/opencv';
+import { backgammonCV, extractMockPosition } from '@/utils/opencv';
+import Engine from '@/utils/engine';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -97,7 +98,7 @@ const CameraScreen: React.FC = () => {
 
       // For now, use mock pipeline (keep frame processors disabled)
       const position = extractMockPosition();
-      const analysis = heuristicEvaluate(position);
+      const analysis = await Engine.evaluate(position);
 
       setCurrentPosition(position);
       setCurrentAnalysis(analysis);

@@ -2,6 +2,8 @@
 
 #import <React/RCTBundleURLProvider.h>
 #import <React/RCTLinkingManager.h>
+#import <React/RCTBridge.h>
+#import "BackgammonMemory-Swift.h"
 
 @implementation AppDelegate
 
@@ -13,7 +15,13 @@
   // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
 
-  return [super application:application didFinishLaunchingWithOptions:launchOptions];
+  BOOL ok = [super application:application didFinishLaunchingWithOptions:launchOptions];
+  // Install JSI bindings for WildBGEngine if present
+  RCTBridge *bridge = [self valueForKey:@"bridge"];
+  if (bridge && bridge.jsRuntime) {
+    installWildBGEngine(bridge.jsRuntime);
+  }
+  return ok;
 }
 
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge
